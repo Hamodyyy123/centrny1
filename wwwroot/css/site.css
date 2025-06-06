@@ -1,0 +1,453 @@
+/* Module Assignment Styles */
+
+.modules-container {
+    min-height: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 2px dashed #ccc;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+.module-item {
+    cursor: move;
+    margin-bottom: 8px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+    .module-item:hover {
+        background-color: #e9ecef;
+        transform: translateX(2px);
+    }
+
+    .module-item.dragging {
+        opacity: 0.5;
+        background-color: #d1e7ff;
+    }
+
+.assigned-modules {
+    border-color: #28a745;
+}
+
+.available-modules {
+    border-color: #17a2b8;
+}
+/* Root info box at top of modal */
+#moduleAssignmentModal .root-info-container {
+    border: 2px solid #bbb;
+    border-radius: 8px;
+    padding: 18px 18px 10px 18px;
+    margin-bottom: 24px;
+    background: #fafbfc;
+}
+
+/* Simple overlay */
+#loadingOverlay {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255,255,255,0.7);
+}
+
+.spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48px;
+    height: 48px;
+    border: 5px solid #ddd;
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+.loading-text {
+    position: absolute;
+    top: 60%;
+    left: 50%;
+    transform: translate(-50%, 0);
+    font-size: 1.1em;
+    color: #333;
+}
+
+.btn-group .btn {
+    border-radius: 20px;
+    font-size: 1.1rem;
+}
+
+.btn-check:checked + .btn {
+    background-color: #0d6efd;
+    color: #fff;
+    border-color: #0d6efd;
+}
+
+#usernameCheckMsg {
+    min-height: 24px;
+}
+
+#rootDropdownContainer {
+    visibility: hidden;
+    height: 70px; /* adjust as needed for your dropdown height */
+    transition: visibility 0s, opacity 0.2s linear;
+    opacity: 0;
+}
+
+    #rootDropdownContainer.show {
+        visibility: visible;
+        opacity: 1;
+    }
+
+.btn-group .btn {
+    border-radius: 20px;
+    font-size: 1.1rem;
+    min-width: 120px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.btn-check:checked + .btn {
+    background-color: #0d6efd;
+    color: #fff;
+    border-color: #0d6efd;
+}
+
+.class-box {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin: 2px;
+    min-width: 140px;
+    min-height: 90px;
+    background: #f8f9fa;
+    font-size: 0.98em;
+    box-shadow: 1px 1px 3px #e6e6e6;
+}
+
+.empty-box {
+    background: #e9ecef;
+    border: 1px dashed #adb5bd;
+    box-shadow: none;
+}
+
+.hall-name {
+    font-weight: bold;
+    vertical-align: middle;
+    background: #f1f3f4;
+    min-width: 120px;
+}
+
+.table th, .table td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+@media (max-width: 1200px) {
+    .class-box {
+        min-width: 100px;
+        font-size: 0.90em;
+    }
+}
+
+.class-cell {
+    position: relative;
+}
+
+.cell-buttons {
+    display: none;
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    z-index: 10;
+}
+
+.class-cell:hover .cell-buttons {
+    display: flex;
+    gap: 2px;
+}
+
+/*login page*/
+
+/* Modern Login Page Styles */
+
+.login-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+}
+
+.login-container {
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+    backdrop-filter: blur(12px);
+    border-radius: 22px;
+    border: 1.2px solid rgba(255, 255, 255, 0.3);
+    max-width: 380px;
+    padding: 2.5rem 2rem 2rem 2rem;
+    margin: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: fadeInUp 2s cubic-bezier(.39,.575,.565,1) forwards;
+    opacity: 0;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: none;
+    }
+
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+}
+
+.login-container h2 {
+    color: #26547c;
+    margin-bottom: 2rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+#loginForm {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+    #loginForm label {
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 0.25rem;
+    }
+
+.form-control {
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 14px;
+    background: rgba(240, 248, 255, 0.58);
+    transition: box-shadow 0.2s, background 0.2s;
+    font-size: 1rem;
+    letter-spacing: 0.5px;
+    outline: none;
+    margin-bottom: 0.3rem;
+}
+
+    .form-control:focus {
+        box-shadow: 0 0 0 2.5px #74ebd5;
+        background: #fff;
+    }
+
+.btn-primary {
+    background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+    color: #fff;
+    border: none;
+    padding: 0.75rem 0;
+    border-radius: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    font-size: 1.05rem;
+    transition: background 0.2s, transform 0.1s;
+    cursor: pointer;
+    box-shadow: 0 2px 8px #185a9d21;
+}
+
+    .btn-primary:hover, .btn-primary:focus {
+        background: linear-gradient(90deg, #185a9d 0%, #43cea2 100%);
+        transform: translateY(-2px) scale(1.03);
+    }
+
+.error-message {
+    font-size: 1em;
+    margin: 0.3rem 0 0.5rem 0;
+    min-height: 1.3em;
+    color: #e74c3c;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 0.35s;
+    text-align: center;
+}
+
+    .error-message.show {
+        opacity: 1;
+    }
+
+#loadingOverlay {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(2px);
+}
+
+.spinner {
+    position: absolute;
+    top: 47%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 54px;
+    height: 54px;
+    border: 7px solid #e3f0ff;
+    border-top: 7px solid #26547c;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+.loading-text {
+    position: absolute;
+    top: 56%;
+    left: 50%;
+    transform: translate(-50%, 0);
+    font-size: 1.15em;
+    color: #26547c;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+@media (max-width: 480px) {
+    .login-container {
+        max-width: 96vw;
+        padding: 1.5rem 0.5rem 1.5rem 0.5rem;
+    }
+
+    .loading-text {
+        font-size: 1em;
+    }
+}
+
+
+
+/*---Reservation table---*/
+
+body {
+    background: #f8f9fa;
+}
+
+.hall-card {
+    border-radius: 0.8rem;
+    min-height: 310px;
+    margin-bottom: 1rem;
+}
+
+.hall-header {
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+}
+
+.reservation-slots {
+    min-height: 200px;
+}
+
+.slot-box {
+    background: #e3f2fd;
+    padding: 0.75rem;
+    border-radius: 0.6rem;
+    border-left: 4px solid #1976d2;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 10px 0 rgba(25, 118, 210, 0.06);
+}
+
+    .slot-box:last-child {
+        margin-bottom: 0;
+    }
+
+.card {
+    transition: box-shadow 0.2s;
+}
+
+    .card:hover {
+        box-shadow: 0 6px 24px 0 rgba(25, 118, 210, 0.13);
+    }
+
+@media (max-width: 767.98px) {
+    .hall-card {
+        min-height: 220px;
+    }
+
+    .reservation-slots {
+        min-height: 110px;
+    }
+
+    .slot-box {
+        font-size: 0.95rem;
+    }
+}
+
+/* Sticky first column for hall names */
+.sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff !important;
+    box-shadow: 2px 0 6px -2px #e5e5e5;
+}
+
+/* Style for reservation slot cards */
+.reservation-slot {
+    transition: box-shadow 0.15s;
+}
+
+    .reservation-slot:hover {
+        box-shadow: 0 0.5rem 1rem rgba(33,37,41,.15);
+        background: #f8f9fa;
+    }
+
+.table-reservation thead th,
+.table-reservation tbody td,
+.table-reservation tbody th {
+    vertical-align: middle !important;
+    text-align: center;
+}
+
+.add-res-btn, .edit-res-btn, .delete-res-btn {
+    min-width: 32px;
+    min-height: 32px;
+}
+
+@media (max-width: 767px) {
+    .reservation-table {
+        font-size: 0.9rem;
+    }
+
+    .sticky-col {
+        min-width: 100px;
+        max-width: 120px;
+    }
+}
