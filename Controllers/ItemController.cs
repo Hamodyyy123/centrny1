@@ -64,6 +64,16 @@ namespace centrny1.Controllers
             return Json(types);
         }
 
+        [HttpGet]
+        public IActionResult GetFreeItemCount()
+        {
+            // Free items: IsActive, and StudentCode is null or 0
+            var count = _context.Items
+                .Where(i => i.IsActive && (i.StudentCode == null || i.StudentCode == 0))
+                .Count();
+            return Json(new { freeCount = count });
+        }
+
         [HttpPost]
         public IActionResult UpdateItem([FromBody] Item model)
         {

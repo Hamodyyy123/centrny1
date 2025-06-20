@@ -25,9 +25,13 @@ public partial class Year
 
     public virtual ICollection<EduYear> EduYears { get; set; } = new List<EduYear>();
 
+    public virtual ICollection<Exam> Exams { get; set; } = new List<Exam>();
+
     public virtual User InsertUserNavigation { get; set; } = null!;
 
     public virtual User? LastUpdateUserNavigation { get; set; }
+
+    public virtual ICollection<Learn> Learns { get; set; } = new List<Learn>();
 
     public virtual Level LevelCodeNavigation { get; set; } = null!;
 
@@ -36,4 +40,6 @@ public partial class Year
     public virtual ICollection<Schedule> Schedules { get; set; } = new List<Schedule>();
 
     public virtual ICollection<Student> Students { get; set; } = new List<Student>();
+
+    public virtual ICollection<Teach> Teaches { get; set; } = new List<Teach>();
 }

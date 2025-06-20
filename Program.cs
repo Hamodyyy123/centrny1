@@ -9,7 +9,13 @@ var config = builder.Configuration;
 // Configure services
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddSession(); // ✅ Add
+// Add session with options (recommended to set IdleTimeout and essential cookies)
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(8); // 8 hour session timeout (match your login logic)
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 
 // Add database context using dependency injection
 builder.Services.AddDbContext<CenterContext>(options =>
@@ -33,12 +39,14 @@ builder.Services.AddCors(options =>
 
 // Build the application
 var app = builder.Build();
+
+// Use session BEFORE UseRouting/UseAuthorization
 app.UseSession();
 
 // Configure middleware pipeline
 if (!app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage(); // Add this
+    app.UseDeveloperExceptionPage();
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
@@ -65,18 +73,13 @@ app.Use(async (context, next) =>
     }
 });
 
-
-
 // Configure routing
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-
+        name: "default",
+        pattern: "{controller=Home}/{action=Index}/{id?}");
 });
-
-
 
 // Run the application
 app.Run();

@@ -1,12 +1,9 @@
 ﻿$(document).ready(function () {
-    // Stores the mapping from itemTypeKey (code) to itemTypeName (name)
     let itemTypeMap = {};
-
     let currentPage = 1;
     const pageSize = 10;
     let totalRecords = 0;
 
-    // Fetch item types and build the map
     function fetchItemTypesMap(callback) {
         $.ajax({
             url: '/Item/GetItemTypes',
@@ -25,15 +22,14 @@
         });
     }
 
-    // Count items with no student name (i.e., free items)
-    function countFreeItems(items) {
-        return items.filter(item => {
-            const studentName = (item.studentName ?? '').toString().trim();
-            return studentName === '';
-        }).length;
-    }
+    // No longer used: free count is now global, remove this function if no longer needed
+    // function countFreeItems(items) {
+    //     return items.filter(item => {
+    //         const studentName = (item.studentName ?? '').toString().trim();
+    //         return studentName === '';
+    //     }).length;
+    // }
 
-    // Load and display items in the table with pagination
     function loadItems(page) {
         $.ajax({
             url: `/Item/GetAllItems?page=${page}&pageSize=${pageSize}`,
@@ -46,29 +42,38 @@
                 items.forEach(item => {
                     const studentName = item.studentName ?? '';
                     const itemTypeName = itemTypeMap[item.itemTypeKey] || item.itemTypeKey;
+                    // Unique ID for QR codes
+                    const qrId = `qr-${item.itemCode}`;
                     rows += `<tr>
                         <td>${item.itemCode}</td>
                         <td>${studentName}</td>
                         <td>${itemTypeName}</td>
-                        <td>${item.itemKey}</td>
                         <td>
-                          <button class="btn btn-sm btn-primary edit-btn" 
-                                  data-itemcode="${item.itemCode}">
-                            Edit
-                          </button>
-                          <button class="btn btn-sm btn-danger delete-btn" 
-                                  data-itemcode="${item.itemCode}">
-                            Delete
-                          </button>
+                            <div id="${qrId}" class="qr-code-cell"></div>
+                        </td>
+                        <td>
+                          <button class="btn btn-sm btn-primary edit-btn" data-itemcode="${item.itemCode}">Edit</button>
+                          <button class="btn btn-sm btn-danger delete-btn" data-itemcode="${item.itemCode}">Delete</button>
+                          <button class="btn btn-sm btn-success download-qr-btn" data-qrid="${qrId}" data-itemkey="${item.itemKey}">Download QR</button>
                         </td>
                     </tr>`;
                 });
 
                 $('#itemsTable tbody').html(rows);
 
-                // Count and display free items
-                const freeCount = countFreeItems(items);
-                $('#freeItemCount').text(freeCount);
+                // Generate QR codes
+                items.forEach(item => {
+                    const qrId = `qr-${item.itemCode}`;
+                    $(`#${qrId}`).empty();
+                    new QRCode(document.getElementById(qrId), {
+                        text: item.itemKey,
+                        width: 80,
+                        height: 80
+                    });
+                });
+
+                // Global free item count
+                loadGlobalFreeItemCount();
 
                 renderPagination();
             },
@@ -78,7 +83,20 @@
         });
     }
 
-    // Render pagination controls
+    // Global free item count function
+    function loadGlobalFreeItemCount() {
+        $.ajax({
+            url: '/Item/GetFreeItemCount',
+            method: 'GET',
+            success: function (data) {
+                $('#freeItemCount').text(data.freeCount);
+            },
+            error: function () {
+                $('#freeItemCount').text('Error');
+            }
+        });
+    }
+
     function renderPagination() {
         const totalPages = Math.ceil(totalRecords / pageSize);
         let paginationHtml = '';
@@ -88,12 +106,10 @@
             return;
         }
 
-        // Previous button
         paginationHtml += `<li class="page-item${currentPage === 1 ? ' disabled' : ''}">
             <a class="page-link" href="#" data-page="${currentPage - 1}">Previous</a>
         </li>`;
 
-        // Page numbers (show up to 5 at a time)
         let startPage = Math.max(1, currentPage - 2);
         let endPage = Math.min(totalPages, currentPage + 2);
         if (currentPage <= 3) endPage = Math.min(5, totalPages);
@@ -105,7 +121,6 @@
             </li>`;
         }
 
-        // Next button
         paginationHtml += `<li class="page-item${currentPage === totalPages ? ' disabled' : ''}">
             <a class="page-link" href="#" data-page="${currentPage + 1}">Next</a>
         </li>`;
@@ -113,7 +128,6 @@
         $('#pagination').html(`<ul class="pagination">${paginationHtml}</ul>`);
     }
 
-    // Handle pagination click
     $('#pagination').on('click', '.page-link', function (e) {
         e.preventDefault();
         const page = parseInt($(this).data('page'), 10);
@@ -124,7 +138,6 @@
         }
     });
 
-    // Load item types for the dropdown
     function loadItemTypes() {
         $.ajax({
             url: '/Item/GetItemTypes',
@@ -144,12 +157,10 @@
         });
     }
 
-    // When Add Item modal is shown, load item types
     $('#addItemModal').on('show.bs.modal', function () {
         loadItemTypes();
     });
 
-    // Handle InsertItems form submission
     $('#insertItemsForm').submit(function (e) {
         e.preventDefault();
 
@@ -170,6 +181,7 @@
                 fetchItemTypesMap(function () {
                     loadItems(currentPage);
                 });
+                loadGlobalFreeItemCount();
                 $('#insertItemsForm')[0].reset();
                 const modal = bootstrap.Modal.getInstance(document.getElementById('addItemModal'));
                 if (modal) modal.hide();
@@ -180,7 +192,6 @@
         });
     });
 
-    // When clicking the Edit button, populate and open the modal
     $('#itemsTable').on('click', '.edit-btn', function () {
         const itemCode = parseInt($(this).data('itemcode'));
         $('#editItemCode').val(itemCode);
@@ -189,7 +200,6 @@
         modal.show();
     });
 
-    // Submit edit form to update the item
     $('#editItemForm').submit(function (e) {
         e.preventDefault();
 
@@ -209,6 +219,7 @@
                 modal.hide();
 
                 loadItems(currentPage);
+                loadGlobalFreeItemCount();
             },
             error: function (xhr, status, error) {
                 alert('Error updating item: ' + error);
@@ -216,7 +227,6 @@
         });
     });
 
-    // Handle Delete button click - soft delete item
     $('#itemsTable').on('click', '.delete-btn', function () {
         if (!confirm('Are you sure you want to delete this item?')) return;
 
@@ -230,6 +240,7 @@
             success: function (response) {
                 alert(response.message);
                 loadItems(currentPage);
+                loadGlobalFreeItemCount();
             },
             error: function (xhr) {
                 alert('Error deleting item: ' + (xhr.responseJSON?.error || xhr.statusText));
@@ -237,8 +248,32 @@
         });
     });
 
-    // First, load the item types map, then load the items
+    // Download QR Code as image for the corresponding row
+    $('#itemsTable').on('click', '.download-qr-btn', function () {
+        const qrId = $(this).data('qrid');
+        const itemKey = $(this).data('itemkey');
+        let canvas = $(`#${qrId} canvas`)[0];
+        let img = $(`#${qrId} img`)[0];
+
+        if (canvas) {
+            let url = canvas.toDataURL("image/png");
+            let link = document.createElement('a');
+            link.href = url;
+            link.download = (itemKey ? itemKey : 'qr') + '.png';
+            link.click();
+        } else if (img) {
+            let link = document.createElement('a');
+            link.href = img.src;
+            link.download = (itemKey ? itemKey : 'qr') + '.png';
+            link.click();
+        } else {
+            alert('No QR code found to download!');
+        }
+    });
+
+    // Initial load
     fetchItemTypesMap(function () {
         loadItems(currentPage);
+        loadGlobalFreeItemCount();
     });
 });

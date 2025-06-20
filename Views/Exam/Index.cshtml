@@ -1,0 +1,260 @@
+﻿@{
+    Layout = null;
+    var isCenter = (ViewData["IsCenter"] as string) == "true";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Exam Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/css/site.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dragula/3.7.3/dragula.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <script>
+        window.isCenterUser = @isCenter.ToString().ToLower();
+        window.rootCode = @ViewData["RootCode"];
+    </script>
+</head>
+<body>
+    <nav class="navbar custom-navbar px-3">
+        <div class="d-flex align-items-center gap-3">
+            <h5 class="navbar-title m-0">Exam Management</h5>
+            <a class="nav-btn" href="/Item">Item management</a>
+            <a class="nav-btn" href="/Security/Security">Security</a>
+            <a class="nav-btn" href="/Class">Classes</a>
+            <a class="nav-btn" href="/Reservation">Reservations</a>
+            <a class="nav-btn" href="/Root">Root Management</a>
+            <a class="nav-btn" href="/TeacherClass/Teacher">Teacher schedule</a>
+            <a class="nav-btn" href="/Question">Questions management</a>
+        </div>
+    </nav>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        @if (isCenter)
+        {
+            <h2 class="mb-0">Exams</h2>
+        }
+        else
+        {
+            <div id="exam-for-teacher" class="mb-0"></div>
+        }
+        <button id="addExamBtn" class="exam-index-btn-add">
+            <i class="bi bi-plus-circle"></i>
+            <span>Add Exam</span>
+        </button>
+    </div>
+    @if (isCenter)
+    {
+        <div id="exam-for-teacher" class="mb-2" style="display:none"></div>
+    }
+    <div class="table-responsive">
+        <div id="exam-details"></div>
+    </div>
+
+    <!-- Exam Stats Modal -->
+    <div class="modal fade" id="examStatsModal" tabindex="-1" aria-labelledby="examStatsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="examStatsModalLabel">Exam Stats</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="examStatsContent">
+                    <!-- Stats will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End Exam Stats Modal -->
+    <!-- Add Exam Modal -->
+    <div class="modal fade" id="examModal" tabindex="-1" aria-labelledby="examModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+            <form id="examForm" class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="examModalLabel">Add Exam</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="examError" class="alert alert-danger" style="display:none"></div>
+                    <div id="teacherDropdownGroup" style="display:none">
+                        <div class="mb-3">
+                            <label for="TeacherCode" class="form-label">Teacher</label>
+                            <select class="form-select" name="TeacherCode" id="TeacherCode"></select>
+                        </div>
+                    </div>
+                    <div id="teacherDisplayGroup" style="display:none">
+                        <div id="teacherDisplayContainer"></div>
+                        <input type="hidden" id="AddExamTeacherCode" />
+                    </div>
+                    <div id="centerDropdownGroup" style="display:none">
+                        <div class="mb-3">
+                            <label for="AddExamCenterCode" class="form-label">Center</label>
+                            <select class="form-select" id="AddExamCenterCode"></select>
+                        </div>
+                    </div>
+                    <div id="branchDropdownGroup" style="display:none">
+                        <div class="mb-3">
+                            <label for="BranchCode" class="form-label">Branch</label>
+                            <select class="form-select" name="BranchCode" id="BranchCode"></select>
+                        </div>
+                    </div>
+                    <div id="rootBranchDropdownGroup" style="display:none">
+                        <div class="mb-3">
+                            <label for="AddExamBranchCode" class="form-label">Branch</label>
+                            <select class="form-select" id="AddExamBranchCode"></select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ExamName" class="form-label">Exam Name</label>
+                        <input type="text" class="form-control" name="ExamName" id="ExamName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ExamTimer" class="form-label">Exam Timer</label>
+                        <input type="text" class="form-control" name="ExamTimer" id="ExamTimer"
+                               pattern="^([0-1]?\d|2[0-3]):[0-5]\d$" placeholder="e.g. 02:30"
+                               autocomplete="off" inputmode="numeric" maxlength="5" required>
+                        <div class="form-text">Enter duration in 24-hour format (hh:mm)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="EduYearCode" class="form-label">Educational Year</label>
+                        <select class="form-select" name="EduYearCode" id="EduYearCode"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="SubjectCode" class="form-label">Subject</label>
+                        <select class="form-select" name="SubjectCode" id="SubjectCode"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="YearCode" class="form-label">Year</label>
+                        <select class="form-select" name="YearCode" id="YearCode"></select>
+                    </div>
+                    <div class="col-md-12 d-flex gap-4 align-items-center mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" name="IsExam" id="IsExam">
+                            <label class="form-check-label" for="IsExam">Is Exam</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" name="IsOnline" id="IsOnline">
+                            <label class="form-check-label" for="IsOnline">Is Online</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Exam</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Exam Modal -->
+    <div class="modal fade" id="editExamModal" tabindex="-1" aria-labelledby="editExamModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <form id="editExamForm" class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editExamModalLabel">Edit Exam</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="editExamError" class="alert alert-danger" style="display:none"></div>
+                    <!-- Hidden fields for required properties -->
+                    <input type="hidden" name="ExamCode" id="EditExamCode" />
+                    <input type="hidden" name="TeacherCode" id="EditTeacherCode" />
+                    <input type="hidden" name="SubjectCode" id="EditSubjectCode" />
+                    <input type="hidden" name="YearCode" id="EditYearCode" />
+                    <input type="hidden" name="BranchCode" id="EditBranchCode" />
+                    <input type="hidden" name="EduYearCode" id="EditEduYearCode" />
+
+                    <div class="mb-3">
+                        <label for="EditExamName" class="form-label">Exam Name</label>
+                        <input type="text" class="form-control" name="ExamName" id="EditExamName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="EditExamTimer" class="form-label">Exam Timer</label>
+                        <input type="text" class="form-control" name="ExamTimer" id="EditExamTimer"
+                               pattern="^([0-1]?\d|2[0-3]):[0-5]\d$" placeholder="e.g. 02:30"
+                               autocomplete="off" inputmode="numeric" maxlength="5">
+                        <div class="form-text">Enter duration in 24-hour format (hh:mm)</div>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="IsExam" id="EditIsExam">
+                        <label class="form-check-label" for="EditIsExam">Is Exam</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="IsOnline" id="EditIsOnline">
+                        <label class="form-check-label" for="EditIsOnline">Is Online</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Update Exam</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Questions Management Modal -->
+    <div class="modal fade" id="questionsModal" tabindex="-1" aria-labelledby="questionsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+            <form id="questionsForm" class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="questionsModalLabel">
+                        <i class="bi bi-list-check me-2"></i>Manage Exam Questions
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3" style="min-height: 80vh; max-height: 80vh; overflow: hidden;">
+                    <input type="hidden" id="questionsExamCode" name="ExamCode">
+                    <div class="row g-3 h-100">
+                        <div class="col-lg-6 d-flex flex-column">
+                            <div class="questions-section h-100 d-flex flex-column">
+                                <div id="availablePaginationTop" class="mb-2"></div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="fw-bold text-primary mb-0">
+                                        <i class="bi bi-collection me-2"></i>Available Questions
+                                    </h6>
+                                    <span id="availableInfo" class="badge bg-info fs-6"></span>
+                                </div>
+                                <div class="questions-container flex-grow-1 d-flex flex-column overflow-auto" style="min-height:350px;max-height:55vh;">
+                                    <ul id="availableQuestions" class="list-group question-list flex-grow-1"></ul>
+                                </div>
+                                <div id="availablePagination" class="mt-2"></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6 d-flex flex-column">
+                            <div class="questions-section h-100 d-flex flex-column">
+                                <div id="chosenPaginationTop" class="mb-2"></div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="fw-bold text-success mb-0">
+                                        <i class="bi bi-check-square me-2"></i>Chosen Questions
+                                    </h6>
+                                    <span id="chosenInfo" class="badge bg-success fs-6"></span>
+                                </div>
+                                <div class="questions-container flex-grow-1 d-flex flex-column overflow-auto" style="min-height:350px;max-height:55vh;">
+                                    <ul id="chosenQuestions" class="list-group question-list flex-grow-1"></ul>
+                                </div>
+                                <div id="chosenPagination" class="mt-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-2"></i>Close
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-2"></i>Save Questions
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dragula/3.7.3/dragula.min.js"></script>
+    <script src="/js/Exam.js"></script>
+</body>
+</html>

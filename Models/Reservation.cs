@@ -33,6 +33,8 @@ public partial class Reservation
 
     public virtual Branch BranchCodeNavigation { get; set; } = null!;
 
+    public virtual ICollection<Class> Classes { get; set; } = new List<Class>();
+
     public virtual Hall HallCodeNavigation { get; set; } = null!;
 
     public virtual Teacher TeacherCodeNavigation { get; set; } = null!;

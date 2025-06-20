@@ -25,9 +25,11 @@ public partial class Class
 
     public int BranchCode { get; set; }
 
-    public int ScheduleCode { get; set; }
+    public int? ScheduleCode { get; set; }
 
     public int EduYearCode { get; set; }
+
+    public int? ReservationCode { get; set; }
 
     public int? YearCode { get; set; }
 
@@ -47,6 +49,8 @@ public partial class Class
 
     public DateTime? LastUpdateTime { get; set; }
 
+    public DateOnly? ClassDate { get; set; }
+
     public virtual ICollection<Attend> Attends { get; set; } = new List<Attend>();
 
     public virtual Branch BranchCodeNavigation { get; set; } = null!;
@@ -59,9 +63,11 @@ public partial class Class
 
     public virtual User? LastUpdateUserNavigation { get; set; }
 
+    public virtual Reservation? ReservationCodeNavigation { get; set; }
+
     public virtual Root RootCodeNavigation { get; set; } = null!;
 
-    public virtual Schedule ScheduleCodeNavigation { get; set; } = null!;
+    public virtual Schedule? ScheduleCodeNavigation { get; set; }
 
     public virtual Subject SubjectCodeNavigation { get; set; } = null!;
 

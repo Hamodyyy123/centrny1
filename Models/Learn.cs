@@ -5,9 +5,13 @@ namespace centrny1.Models;
 
 public partial class Learn
 {
+    public int StudentCode { get; set; }
+
     public int SubjectCode { get; set; }
 
     public int TeacherCode { get; set; }
+
+    public int ScheduleCode { get; set; }
 
     public int EduYearCode { get; set; }
 
@@ -15,7 +19,7 @@ public partial class Learn
 
     public int RootCode { get; set; }
 
-    public int StudentCode { get; set; }
+    public int? YearCode { get; set; }
 
     public bool IsOnline { get; set; }
 
@@ -35,5 +39,17 @@ public partial class Learn
 
     public virtual EduYear EduYearCodeNavigation { get; set; } = null!;
 
+    public virtual Root RootCodeNavigation { get; set; } = null!;
+
+    public virtual Schedule ScheduleCodeNavigation { get; set; } = null!;
+
+    public virtual Student StudentCodeNavigation { get; set; } = null!;
+
     public virtual Subject SubjectCodeNavigation { get; set; } = null!;
+
+    public virtual Teacher TeacherCodeNavigation { get; set; } = null!;
+
+    public virtual Year? YearCode1 { get; set; }
+
+    public virtual Lesson? YearCodeNavigation { get; set; }
 }

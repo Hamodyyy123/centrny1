@@ -3,7 +3,92 @@
     let currentRootName = "";
     let currentBranchCode = null;
 
-    // Set the chosenDateInput to today on page load
+    // Helper: Check hall time slot via JSON AJAX
+    function checkHallTimeAvailableJson(data, callback) {
+        $.ajax({
+            url: '/Class/CheckHallTimeAvailable',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(data),
+            success: callback,
+            error: function (xhr) {
+                callback({ success: false, message: 'Server error' });
+            }
+        });
+    }
+
+    function setEditFieldRequired(isRequired) {
+        const fields = [
+            '#EditClassName',
+            '#EditTeacherCode',
+            '#EditSubjectCode',
+            '#EditYearCode',
+            '#editClassStartTime',
+            '#editClassEndTime'
+        ];
+        fields.forEach(sel => {
+            if (isRequired) {
+                $(sel).attr('required', 'required');
+            } else {
+                $(sel).removeAttr('required');
+            }
+        });
+    }
+
+    function loadReservationTeachers(callback) {
+        $.get('/Class/GetTeachers', function (data) {
+            let options = '<option value="">Select Teacher</option>';
+            data.filter(t => !t.isStaff).forEach(t => {
+                options += `<option value="${t.teacherCode}">${t.teacherName}</option>`;
+            });
+            $('#ReservationTeacherCode').html(options);
+            if (typeof callback === "function") callback();
+        });
+    }
+
+    function loadReservationHalls() {
+        if (!currentBranchCode) {
+            $('#ReservationHallCode').html('<option value="">Select Branch First</option>');
+            return;
+        }
+        $.get('/Class/GetHallsByBranch', { branchCode: currentBranchCode }, function (data) {
+            let options = '<option value="">Select Hall</option>';
+            data.forEach(h => {
+                options += `<option value="${h.hallCode}">${h.hallName}</option>`;
+            });
+            $('#ReservationHallCode').html(options);
+        });
+    }
+
+    function loadClassTeachers(callback) {
+        $.get('/Class/GetTeachers', function (data) {
+            let options = '<option value="">Select Teacher</option>';
+            data.filter(t => t.isStaff).forEach(t => {
+                options += `<option value="${t.teacherCode}">${t.teacherName}</option>`;
+            });
+            $('#EditTeacherCode').html(options);
+            if (typeof callback === "function") callback();
+        });
+    }
+
+    function loadSubjects(callback) {
+        $.get('/Class/GetSubjects', function (data) {
+            let options = '<option value="">Select Subject</option>';
+            data.forEach(s => options += `<option value="${s.subjectCode}">${s.subjectName}</option>`);
+            $('#EditSubjectCode').html(options);
+            if (typeof callback === "function") callback();
+        });
+    }
+
+    function loadYears(callback) {
+        $.get('/Class/GetYears', function (data) {
+            let options = '<option value="">Select Year</option>';
+            data.forEach(y => options += `<option value="${y.yearCode}">${y.yearName}</option>`);
+            $('#EditYearCode').html(options);
+            if (typeof callback === "function") callback();
+        });
+    }
+
     const today = new Date().toISOString().slice(0, 10);
     $('#chosenDateInput').val(today);
     $('#chosenDateDisplay').text('Selected: ' + today);
@@ -66,6 +151,7 @@
         if (currentBranchCode) fetchAndRender(today, currentBranchCode);
     });
 
+    // Modified: Pass rootCode to backend
     function fetchAndRender(date, branchCode) {
         $.ajax({
             url: '/Class/GetHallsWithClassGrid',
@@ -73,7 +159,8 @@
             dataType: 'json',
             data: {
                 insertDate: date,
-                branchCode: branchCode
+                branchCode: branchCode,
+                rootCode: currentRootCode // Pass the root code
             },
             success: function (data) {
                 renderTable(data);
@@ -172,110 +259,19 @@
         });
     }
 
-    // --- Add Session Modal Logic ---
+    // --- Add Session Modal Logic
     $('#addSessionBtn').on('click', function () {
         var modal = new bootstrap.Modal(document.getElementById('addSessionModal'));
         modal.show();
     });
 
-    function openAddClassFromScheduleModal() {
-        if (!currentRootCode) {
-            alert("Please select a root before adding.");
-            return;
-        }
-        const date = $('#chosenDateInput').val() || today;
-        $('#schedulesTable tbody').html('<tr><td colspan="9" class="text-center">Loading schedules...</td></tr>');
-        $.get('/Class/GetSchedulesForDay', { date: date, rootCode: currentRootCode }, function (schedules) {
-            if (!schedules || schedules.length === 0) {
-                $('#schedulesTable tbody').html('<tr><td colspan="9" class="text-center text-danger">No schedules found for this date and root.</td></tr>');
-                return;
-            }
-            $.when(
-                $.get('/Class/GetTeachers'),
-                $.get('/Class/GetSubjects'),
-                $.get('/Class/GetYears'),
-                $.get('/Class/GetEduYears'),
-                $.get('/Class/GetHallsWithClassGrid', { insertDate: date, branchCode: currentBranchCode })
-            ).done(function (teachersRes, subjectsRes, yearsRes, eduyearsRes, hallsRes) {
-                const teachers = teachersRes[0];
-                const subjects = subjectsRes[0];
-                const years = yearsRes[0];
-                const eduyears = eduyearsRes[0];
-                const halls = [];
-                if (hallsRes[0] && Array.isArray(hallsRes[0])) {
-                    hallsRes[0].forEach(h => halls.push({ hallName: h.hallName, hallCode: h.hallCode }));
-                }
-
-                let rows = '';
-                schedules.forEach(s => {
-                    const teacher = teachers.find(t => t.teacherCode === s.teacherCode);
-                    const subject = subjects.find(sub => sub.subjectCode === s.subjectCode);
-                    const year = years.find(y => y.yearCode === s.yearCode);
-                    const eduyear = eduyears.find(e => e.eduCode === s.eduYearCode);
-                    const hall = halls.find(h => h.hallCode === s.hallCode);
-
-                    let startTimeStr = "";
-                    let endTimeStr = "";
-                    if (s.startTime && typeof s.startTime === "string" && s.startTime.length >= 16) {
-                        startTimeStr = s.startTime.substring(11, 16);
-                    }
-                    if (s.endTime && typeof s.endTime === "string" && s.endTime.length >= 16) {
-                        endTimeStr = s.endTime.substring(11, 16);
-                    }
-
-                    rows += `<tr>
-                        <td>${s.scheduleName}</td>
-                        <td>${teacher ? teacher.teacherName : ''}</td>
-                        <td>${hall ? hall.hallName : s.hallCode}</td>
-                        <td>${subject ? subject.subjectName : ''}</td>
-                        <td>${year ? year.yearName : ''}</td>
-                        <td>${eduyear ? eduyear.eduName : ''}</td>
-                        <td>${startTimeStr}</td>
-                        <td>${endTimeStr}</td>
-                        <td>
-                            <button class="btn btn-success btn-sm select-schedule-btn" 
-                                data-schedulecode="${s.scheduleCode}" 
-                                data-hallcode="${s.hallCode}"
-                                data-rootcode="${currentRootCode}">
-                                Add
-                            </button>
-                        </td>
-                    </tr>`;
-                });
-                $('#schedulesTable tbody').html(rows);
-            });
-        });
-
-        var modal = new bootstrap.Modal(document.getElementById('selectScheduleModal'));
-        modal.show();
-    }
-
-    // Bind both buttons to this function
-    $('#addClassFromScheduleBtn').on('click', openAddClassFromScheduleModal);
-    $('#addClassFromScheduleBtnModal').on('click', function () {
-        $('#addSessionModal').modal('hide');
-        setTimeout(openAddClassFromScheduleModal, 300);
-    });
-
-    $('#addReservationBtnModal').on('click', function () {
-        $('#addSessionModal').modal('hide');
-        loadReservationTeachers();
-        loadReservationHalls();
-        $('#addReservationForm')[0].reset();
-        $('#ReservationTime').val($('#chosenDateInput').val() || "");
-        $('#ReservationPeriod').val('');
-        var modal = new bootstrap.Modal(document.getElementById('addReservationModal'));
-        modal.show();
-    });
-
-    // "First time?" link next to Teacher dropdown in Reservation Modal
+    // --- Add Teacher Modal Logic
     $('#ReservationTeacherCode').parent().on('click', '#firstTimeTeacherBtn', function () {
         $('#addTeacherForm')[0].reset();
         var modal = new bootstrap.Modal(document.getElementById('addTeacherModal'));
         modal.show();
     });
 
-    // Add Teacher Modal Form Submission
     $('#addTeacherForm').on('submit', function (e) {
         e.preventDefault();
         var data = {
@@ -300,29 +296,18 @@
         });
     });
 
-    function loadReservationTeachers(callback) {
-        $.get('/Class/GetTeachers', function (data) {
-            let options = '<option value="">Select Teacher</option>';
-            data.filter(t => !t.isStaff).forEach(t => {
-                options += `<option value="${t.teacherCode}">${t.teacherName}</option>`;
-            });
-            $('#ReservationTeacherCode').html(options);
-            if (typeof callback === "function") callback();
-        });
-    }
-    function loadReservationHalls() {
-        if (!currentBranchCode) {
-            $('#ReservationHallCode').html('<option value="">Select Branch First</option>');
-            return;
-        }
-        $.get('/Class/GetHallsByBranch', { branchCode: currentBranchCode }, function (data) {
-            let options = '<option value="">Select Hall</option>';
-            data.forEach(h => {
-                options += `<option value="${h.hallCode}">${h.hallName}</option>`;
-            });
-            $('#ReservationHallCode').html(options);
-        });
-    }
+    // --- Add Reservation Modal Logic
+    $('#addReservationBtnModal').on('click', function () {
+        $('#addSessionModal').modal('hide');
+        loadReservationTeachers();
+        loadReservationHalls();
+        $('#addReservationForm')[0].reset();
+        $('#ReservationTime').val($('#chosenDateInput').val() || "");
+        $('#ReservationPeriod').val('');
+        var modal = new bootstrap.Modal(document.getElementById('addReservationModal'));
+        modal.show();
+    });
+
     $('#ReservationStartTime, #ReservationEndTime').on('change', function () {
         const start = $('#ReservationStartTime').val();
         const end = $('#ReservationEndTime').val();
@@ -336,53 +321,48 @@
             $('#ReservationPeriod').val('');
         }
     });
-    $('#addReservationForm').on('submit', function (e) {
-        e.preventDefault();
-        var formData = $(this).serialize();
-        formData += (formData ? '&' : '') + 'BranchCode=' + encodeURIComponent(currentBranchCode || '');
-        $.post('/Class/AddReservation', formData, function (result) {
-            if (result.success) {
-                var modal = bootstrap.Modal.getInstance(document.getElementById('addReservationModal'));
-                modal.hide();
-                if (currentBranchCode) fetchAndRender($('#chosenDateInput').val() || today, currentBranchCode);
-            } else {
-                alert(result.message || 'Error adding reservation');
-            }
-        }).fail(function (xhr) {
-            alert('Error adding reservation: ' + (xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Server Error'));
-        });
-    });
 
-    // Add class from chosen schedule
-    $('#schedulesTable').on('click', '.select-schedule-btn', function () {
-        const scheduleCode = $(this).data('schedulecode');
-        const hallCode = $(this).data('hallcode');
-        const rootCode = $(this).data('rootcode');
-        if (!scheduleCode || !hallCode || !rootCode) {
-            alert('Missing schedule, hall, or root code');
+    // ---- ADD RESERVATION: Only alert if time is occupied
+    $('#addReservationForm').off('submit').on('submit', function (e) {
+        e.preventDefault();
+        var hallCode = $('#ReservationHallCode').val();
+        var date = $('#ReservationTime').val();
+        var startTime = $('#ReservationStartTime').val();
+        var endTime = $('#ReservationEndTime').val();
+        if (!hallCode || !date || !startTime || !endTime) {
+            alert('Please fill all hall and time fields');
             return;
         }
-        $.post('/Class/AddClassFromSchedule', { scheduleCode, hallCode, rootCode }, function (result) {
-            if (result.success) {
-                var modal = bootstrap.Modal.getInstance(document.getElementById('selectScheduleModal'));
-                modal.hide();
-                if (currentBranchCode) fetchAndRender($('#chosenDateInput').val() || today, currentBranchCode);
-                alert('Class added successfully!');
-            } else {
-                alert(result.message || 'Error adding class');
+        var checkData = {
+            HallCode: hallCode,
+            Date: date,
+            StartTime: startTime,
+            EndTime: endTime
+        };
+        // Only check BEFORE the actual submit
+        checkHallTimeAvailableJson(checkData, function (res) {
+            if (!res.success) {
+                alert(res.message + (res.conflicts ? "\n" + res.conflicts.join('\n') : ''));
+                return; // Do NOT submit if time is occupied
             }
-        }).fail(function (xhr) {
-            let msg = "Server Error";
-            if (xhr.responseJSON && xhr.responseJSON.message) {
-                msg = xhr.responseJSON.message;
-                if (xhr.responseJSON.stack)
-                    msg += "\n\n" + xhr.responseJSON.stack;
-            }
-            alert('Error adding class: ' + msg);
+            // Only submit if slot is available!
+            var formData = $('#addReservationForm').serialize();
+            formData += (formData ? '&' : '') + 'BranchCode=' + encodeURIComponent(currentBranchCode || '');
+            $.post('/Class/AddReservation', formData, function (result) {
+                if (result.success) {
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('addReservationModal'));
+                    modal.hide();
+                    if (currentBranchCode) fetchAndRender($('#chosenDateInput').val() || today, currentBranchCode);
+                } else {
+                    alert(result.message || 'Server error');
+                }
+            }).fail(function () {
+                alert('Server error');
+            });
         });
     });
 
-    // Edit Reservation logic
+    // --- Edit Reservation Logic
     $('#hallsTable').on('click', '.edit-reservation-btn', function () {
         const cell = $(this).closest('.reservation-cell');
         $('#EditReservationCode').val(cell.data('reservationcode') || '');
@@ -460,7 +440,131 @@
         });
     });
 
-    // Edit Class logic
+    // --- Add Class from Schedule Logic
+    function openAddClassFromScheduleModal() {
+        if (!currentRootCode) {
+            alert("Please select a root before adding.");
+            return;
+        }
+        const date = $('#chosenDateInput').val() || today;
+        $('#schedulesTable tbody').html('<tr><td colspan="9" class="text-center">Loading schedules...</td></tr>');
+        $.get('/Class/GetSchedulesForDay', { date: date, rootCode: currentRootCode }, function (schedules) {
+            if (!schedules || schedules.length === 0) {
+                $('#schedulesTable tbody').html('<tr><td colspan="9" class="text-center text-danger">No schedules found for this date and root.</td></tr>');
+                return;
+            }
+            $.when(
+                $.get('/Class/GetTeachers'),
+                $.get('/Class/GetSubjects'),
+                $.get('/Class/GetYears'),
+                $.get('/Class/GetEduYears'),
+                // Modified: Pass rootCode to halls grid for correct filtering
+                $.get('/Class/GetHallsWithClassGrid', { insertDate: date, branchCode: currentBranchCode, rootCode: currentRootCode })
+            ).done(function (teachersRes, subjectsRes, yearsRes, eduyearsRes, hallsRes) {
+                const teachers = teachersRes[0];
+                const subjects = subjectsRes[0];
+                const years = yearsRes[0];
+                const eduyears = eduyearsRes[0];
+                const halls = [];
+                if (hallsRes[0] && Array.isArray(hallsRes[0])) {
+                    hallsRes[0].forEach(h => halls.push({ hallName: h.hallName, hallCode: h.hallCode }));
+                }
+
+                let rows = '';
+                schedules.forEach(s => {
+                    const teacher = teachers.find(t => t.teacherCode === s.teacherCode);
+                    const subject = subjects.find(sub => sub.subjectCode === s.subjectCode);
+                    const year = years.find(y => y.yearCode === s.yearCode);
+                    const eduyear = eduyears.find(e => e.eduCode === s.eduYearCode);
+                    const hall = halls.find(h => h.hallCode === s.hallCode);
+
+                    let startTimeStr = "";
+                    let endTimeStr = "";
+                    if (s.startTime && typeof s.startTime === "string" && s.startTime.length >= 16) {
+                        startTimeStr = s.startTime.substring(11, 16);
+                    }
+                    if (s.endTime && typeof s.endTime === "string" && s.endTime.length >= 16) {
+                        endTimeStr = s.endTime.substring(11, 16);
+                    }
+
+                    rows += `<tr>
+                        <td>${s.scheduleName}</td>
+                        <td>${teacher ? teacher.teacherName : ''}</td>
+                        <td>${hall ? hall.hallName : s.hallCode}</td>
+                        <td>${subject ? subject.subjectName : ''}</td>
+                        <td>${year ? year.yearName : ''}</td>
+                        <td>${eduyear ? eduyear.eduName : ''}</td>
+                        <td>${startTimeStr}</td>
+                        <td>${endTimeStr}</td>
+                        <td>
+                            <button class="btn btn-success btn-sm select-schedule-btn" 
+                                data-schedulecode="${s.scheduleCode}" 
+                                data-hallcode="${s.hallCode}"
+                                data-rootcode="${currentRootCode}">
+                                Add
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+                $('#schedulesTable tbody').html(rows);
+            });
+        });
+
+        var modal = new bootstrap.Modal(document.getElementById('selectScheduleModal'));
+        modal.show();
+    }
+
+    $('#addClassFromScheduleBtn').on('click', openAddClassFromScheduleModal);
+    $('#addClassFromScheduleBtnModal').on('click', function () {
+        $('#addSessionModal').modal('hide');
+        setTimeout(openAddClassFromScheduleModal, 300);
+    });
+
+    // --- Add Class from Schedule With Hall Check
+    $('#schedulesTable').on('click', '.select-schedule-btn', function () {
+        const scheduleCode = $(this).data('schedulecode');
+        const hallCode = $(this).data('hallcode');
+        const rootCode = $(this).data('rootcode');
+        const row = $(this).closest('tr');
+        const startTime = row.find('td').eq(6).text();
+        const endTime = row.find('td').eq(7).text();
+        const date = $('#chosenDateInput').val() || today;
+        if (!scheduleCode || !hallCode || !rootCode) {
+            alert('Missing schedule, hall, or root code');
+            return;
+        }
+        if (!startTime || !endTime || !date) {
+            alert('Missing times or date');
+            return;
+        }
+        var checkData = {
+            HallCode: hallCode,
+            Date: date,
+            StartTime: startTime,
+            EndTime: endTime
+        };
+        checkHallTimeAvailableJson(checkData, function (res) {
+            if (!res.success) {
+                alert(res.message + '\n' + (res.conflicts ? res.conflicts.join('\n') : ''));
+                return;
+            }
+            // Only submit if slot is available!
+            $.post('/Class/AddClassFromSchedule', { scheduleCode, hallCode, rootCode }, function (result) {
+                if (result.success) {
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('selectScheduleModal'));
+                    modal.hide();
+                    if (currentBranchCode) fetchAndRender($('#chosenDateInput').val() || today, currentBranchCode);
+                    alert('Class added successfully!');
+                } else {
+                    alert(result.message || 'Server error');
+                }
+            }).fail(function () {
+                alert('Server error');
+            });
+        });
+    });
+
+    // --- Edit Class Logic
     $('#hallsTable').on('click', '.edit-class-btn', function () {
         const cell = $(this).closest('.class-cell');
         const classCode = cell.data('classcode');
@@ -496,34 +600,38 @@
             modal.show();
         }
 
-        // Load dropdowns for teachers (IsStaff==true), subjects, and years
         let loaded = 0;
         function checkLoaded() { loaded++; if (loaded === 3) showModalAfterDropdowns(); }
 
-        $.get('/Class/GetTeachers', function (data) {
-            let options = '<option value="">Select Teacher</option>';
-            data.filter(t => t.isStaff).forEach(t => {
-                options += `<option value="${t.teacherCode}">${t.teacherName}</option>`;
-            });
-            $('#EditTeacherCode').html(options);
-            checkLoaded();
-        });
-        $.get('/Class/GetSubjects', function (data) {
-            let options = '<option value="">Select Subject</option>';
-            data.forEach(s => options += `<option value="${s.subjectCode}">${s.subjectName}</option>`);
-            $('#EditSubjectCode').html(options);
-            checkLoaded();
-        });
-        $.get('/Class/GetYears', function (data) {
-            let options = '<option value="">Select Year</option>';
-            data.forEach(y => options += `<option value="${y.yearCode}">${y.yearName}</option>`);
-            $('#EditYearCode').html(options);
-            checkLoaded();
-        });
+        loadClassTeachers(checkLoaded);
+        loadSubjects(checkLoaded);
+        loadYears(checkLoaded);
     });
 
     $('#addClassModal').on('hidden.bs.modal', function () {
         setEditFieldRequired(true);
+    });
+
+    $('#editClassForm').on('submit', function (e) {
+        e.preventDefault();
+        const data = {
+            ClassCode: $('#EditClassCode').val(),
+            ClassName: $('#EditClassName').val(),
+            TeacherCode: $('#EditTeacherCode').val(),
+            SubjectCode: $('#EditSubjectCode').val(),
+            YearCode: $('#EditYearCode').val(),
+            ClassStartTime: $('#editClassStartTime').val(),
+            ClassEndTime: $('#editClassEndTime').val()
+        };
+        $.post('/Class/EditClass', data, function (result) {
+            if (result.success) {
+                var modal = bootstrap.Modal.getInstance(document.getElementById('editClassModal'));
+                modal.hide();
+                if (currentBranchCode) fetchAndRender($('#chosenDateInput').val() || today, currentBranchCode);
+            } else {
+                alert('Error editing class');
+            }
+        });
     });
 
     $('#hallsTable').on('click', '.delete-class-btn', function () {
@@ -551,43 +659,4 @@
         });
     });
 
-    function setEditFieldRequired(isRequired) {
-        const fields = [
-            '#EditClassName',
-            '#EditTeacherCode',
-            '#EditSubjectCode',
-            '#EditYearCode',
-            '#editClassStartTime',
-            '#editClassEndTime'
-        ];
-        fields.forEach(sel => {
-            if (isRequired) {
-                $(sel).attr('required', 'required');
-            } else {
-                $(sel).removeAttr('required');
-            }
-        });
-    }
-
-    $('#editClassForm').on('submit', function (e) {
-        e.preventDefault();
-        const data = {
-            ClassCode: $('#EditClassCode').val(),
-            ClassName: $('#EditClassName').val(),
-            TeacherCode: $('#EditTeacherCode').val(),
-            SubjectCode: $('#EditSubjectCode').val(),
-            YearCode: $('#EditYearCode').val(),
-            ClassStartTime: $('#editClassStartTime').val(),
-            ClassEndTime: $('#editClassEndTime').val()
-        };
-        $.post('/Class/EditClass', data, function (result) {
-            if (result.success) {
-                var modal = bootstrap.Modal.getInstance(document.getElementById('editClassModal'));
-                modal.hide();
-                if (currentBranchCode) fetchAndRender($('#chosenDateInput').val() || today, currentBranchCode);
-            } else {
-                alert('Error editing class');
-            }
-        });
-    });
 });

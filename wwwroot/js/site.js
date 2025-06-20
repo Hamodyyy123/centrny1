@@ -1,13 +1,46 @@
 ﻿$(document).ready(function () {
-    $('#loginForm').on('submit', function (e) {
-        e.preventDefault();
+    const $loginForm = $('#loginForm');
+    const $username = $('#username');
+    const $password = $('#password');
+    const $loginBtn = $loginForm.find('button[type="submit"]');
+    const $errorMsg = $('#errorMessage');
+    const $overlay = $('#loadingOverlay');
+    const $loginContainer = $('.login-container');
 
-        const $errorMsg = $('#errorMessage');
+    // Hide overlay on load
+    $overlay.hide();
+
+    // Fade in the login container on page load
+    $loginContainer.css({
+        'animation': 'fadeInUp 1s cubic-bezier(.39,.575,.565,1) forwards'
+    });
+
+    // Button should be disabled until both fields are filled
+    function checkInputs() {
+        if ($username.val().trim() && $password.val().trim()) {
+            $loginBtn.prop('disabled', false);
+        } else {
+            $loginBtn.prop('disabled', true);
+        }
+    }
+
+    // On any input, check button enable/disable
+    $username.add($password).on('input', function () {
+        checkInputs();
         $errorMsg.removeClass('show').text('');
-        $('#loadingOverlay').fadeIn(150);
+    });
 
-        const Username = $('#username').val();
-        const Password = $('#password').val();
+    // Initial check (button disabled on load)
+    checkInputs();
+    $username.focus();
+
+    $loginForm.on('submit', function (e) {
+        e.preventDefault();
+        $errorMsg.removeClass('show').text('');
+        $overlay.fadeIn(150); // Show overlay
+
+        const Username = $username.val();
+        const Password = $password.val();
 
         $.ajax({
             url: '/Home/Authenticate',
@@ -15,7 +48,7 @@
             contentType: 'application/x-www-form-urlencoded',
             data: `username=${encodeURIComponent(Username)}&password=${encodeURIComponent(Password)}`,
             success: function (response) {
-                $('#loadingOverlay').fadeOut(100);
+                $overlay.fadeOut(100);
                 if (response.success) {
                     window.location.href = response.redirectUrl;
                 } else {
@@ -23,14 +56,9 @@
                 }
             },
             error: function () {
-                $('#loadingOverlay').fadeOut(100);
+                $overlay.fadeOut(100);
                 $errorMsg.text('An error occurred. Please try again.').addClass('show');
             }
         });
-    });
-
-    // Hide error on input
-    $('#username, #password').on('input', function () {
-        $('#errorMessage').removeClass('show').text('');
     });
 });

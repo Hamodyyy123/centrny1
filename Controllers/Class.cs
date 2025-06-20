@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq; // for JObject
 
 namespace centrny1.Controllers
 {
@@ -24,14 +25,22 @@ namespace centrny1.Controllers
         }
 
         [HttpGet("GetHallsWithClassGrid")]
-        public async Task<IActionResult> GetHallsWithClassGrid(DateTime? insertDate, int? branchCode)
+        public async Task<IActionResult> GetHallsWithClassGrid(DateTime? insertDate, int? branchCode, int? rootCode)
         {
             if (!branchCode.HasValue)
             {
                 return Json(new object[0]);
             }
 
-            var halls = await _context.Halls
+            // Filter halls by branch and root code
+            var hallsQuery = _context.Halls.AsQueryable();
+            hallsQuery = hallsQuery.Where(h => h.BranchCode == branchCode);
+            if (rootCode.HasValue)
+            {
+                hallsQuery = hallsQuery.Where(h => h.RootCode == rootCode.Value);
+            }
+
+            var halls = await hallsQuery
                 .Select(h => new
                 {
                     hallName = h.HallName,
@@ -106,7 +115,6 @@ namespace centrny1.Controllers
 
             return Json(data);
         }
-
         [HttpGet("GetHallsByBranch")]
         public async Task<IActionResult> GetHallsByBranch(int branchCode)
         {
@@ -226,6 +234,17 @@ namespace centrny1.Controllers
                 if (hall == null)
                     return Json(new { success = false, message = "Hall not found." });
 
+                var classDate = schedule.StartTime?.Date ?? DateTime.Today;
+                var startTime = schedule.StartTime.HasValue ? TimeOnly.FromDateTime(schedule.StartTime.Value) : (TimeOnly?)null;
+                var endTime = schedule.EndTime.HasValue ? TimeOnly.FromDateTime(schedule.EndTime.Value) : (TimeOnly?)null;
+                if (startTime == null || endTime == null)
+                    return Json(new { success = false, message = "Class times missing." });
+
+                // --- Double-booking prevention ---
+                if (await HasHallConflict(hallCode, classDate, startTime.Value, endTime.Value))
+                    return Json(new { success = false, message = "Hall is not available for this time slot." });
+                // --- End double-booking prevention ---
+
                 int rootCode = 1;
                 int insertUserCode = schedule.InsertUser ?? 1;
 
@@ -245,12 +264,8 @@ namespace centrny1.Controllers
                     BranchCode = hall.BranchCode,
                     RootCode = rootCode,
                     InsertUser = insertUserCode,
-                    ClassStartTime = schedule.StartTime.HasValue
-                        ? TimeOnly.FromDateTime(schedule.StartTime.Value)
-                        : (TimeOnly?)null,
-                    ClassEndTime = schedule.EndTime.HasValue
-                        ? TimeOnly.FromDateTime(schedule.EndTime.Value)
-                        : (TimeOnly?)null,
+                    ClassStartTime = startTime,
+                    ClassEndTime = endTime,
                     InsertTime = schedule.StartTime ?? DateTime.Now
                 };
 
@@ -285,6 +300,17 @@ namespace centrny1.Controllers
             {
                 return StatusCode(400, new { success = false, message = "BranchCode must be provided." });
             }
+
+            // --- Double-booking prevention ---
+            if (model.ClassStartTime.HasValue && model.ClassEndTime.HasValue)
+            {
+                var date = model.InsertTime.Date;
+                var startTime = model.ClassStartTime.Value;
+                var endTime = model.ClassEndTime.Value;
+                if (await HasHallConflict(model.HallCode, date, startTime, endTime))
+                    return Json(new { success = false, message = "Hall is not available for this time slot." });
+            }
+            // --- End double-booking prevention ---
 
             _context.Classes.Add(model);
             await _context.SaveChangesAsync();
@@ -344,6 +370,18 @@ namespace centrny1.Controllers
         {
             try
             {
+                TimeOnly? startTime = !string.IsNullOrWhiteSpace(ReservationStartTime) ? TimeOnly.Parse(ReservationStartTime) : (TimeOnly?)null;
+                TimeOnly? endTime = !string.IsNullOrWhiteSpace(ReservationEndTime) ? TimeOnly.Parse(ReservationEndTime) : (TimeOnly?)null;
+                var date = !string.IsNullOrWhiteSpace(RTime) ? DateOnly.Parse(RTime).ToDateTime(TimeOnly.MinValue).Date : DateTime.Today;
+
+                // --- Double-booking prevention ---
+                if (startTime.HasValue && endTime.HasValue)
+                {
+                    if (await HasHallConflict(HallCode, date, startTime.Value, endTime.Value))
+                        return Json(new { success = false, message = "Hall is not available for this time slot." });
+                }
+                // --- End double-booking prevention ---
+
                 var reservation = new Reservation
                 {
                     HallCode = HallCode,
@@ -353,18 +391,13 @@ namespace centrny1.Controllers
                     Cost = Cost,
                     Deposit = Deposit,
                     FinalCost = FinalCost,
-                    BranchCode = BranchCode
+                    BranchCode = BranchCode,
+                    ReservationStartTime = startTime,
+                    ReservationEndTime = endTime,
+                    RTime = !string.IsNullOrWhiteSpace(RTime)
+                        ? DateOnly.Parse(RTime)
+                        : DateOnly.FromDateTime(DateTime.Now)
                 };
-
-                if (!string.IsNullOrWhiteSpace(ReservationStartTime))
-                    reservation.ReservationStartTime = TimeOnly.Parse(ReservationStartTime);
-                if (!string.IsNullOrWhiteSpace(ReservationEndTime))
-                    reservation.ReservationEndTime = TimeOnly.Parse(ReservationEndTime);
-
-                if (!string.IsNullOrWhiteSpace(RTime))
-                    reservation.RTime = DateOnly.Parse(RTime);
-                else
-                    reservation.RTime = DateOnly.FromDateTime(DateTime.Now);
 
                 if (reservation.ReservationStartTime.HasValue && reservation.ReservationEndTime.HasValue)
                 {
@@ -483,6 +516,130 @@ namespace centrny1.Controllers
             {
                 return Json(new { success = false, message = ex.Message });
             }
+        }
+
+        [HttpPost("CheckHallTimeAvailable")]
+        public async Task<IActionResult> CheckHallTimeAvailable([FromBody] JObject input)
+        {
+            if (input == null)
+                return Json(new { success = true });
+            
+            // Defensive extraction with error reporting
+            int hallCode = 0;
+            string date = null;
+            string startTime = null;
+            string endTime = null;
+            int? excludeClassCode = null;
+            int? excludeReservationCode = null;
+
+            try { hallCode = input["HallCode"]?.Value<int>() ?? 0; } catch { }
+            try { date = input["Date"]?.ToString(); } catch { }
+            try { startTime = input["StartTime"]?.ToString(); } catch { }
+            try { endTime = input["EndTime"]?.ToString(); } catch { }
+            try { excludeClassCode = input["ExcludeClassCode"]?.Value<int?>(); } catch { }
+            try { excludeReservationCode = input["ExcludeReservationCode"]?.Value<int?>(); } catch { }
+
+            if (hallCode == 0 || string.IsNullOrWhiteSpace(date) || string.IsNullOrWhiteSpace(startTime) || string.IsNullOrWhiteSpace(endTime))
+                return Json(new { success = false, message = "Missing required fields", debug = new { hallCode, date, startTime, endTime } });
+
+            if (!DateTime.TryParse(date, out DateTime parsedDate))
+                return Json(new { success = false, message = "Invalid date format", debug = date });
+
+            if (!TimeOnly.TryParse(startTime, out TimeOnly s))
+                return Json(new { success = false, message = "Invalid start time", debug = startTime });
+
+            if (!TimeOnly.TryParse(endTime, out TimeOnly e))
+                return Json(new { success = false, message = "Invalid end time", debug = endTime });
+
+            var dateOnly = parsedDate.Date;
+
+            var classConflicts = await _context.Classes
+                .Where(c =>
+                    c.HallCode == hallCode &&
+                    c.InsertTime.Date == dateOnly &&
+                    (excludeClassCode == null || c.ClassCode != excludeClassCode) &&
+                    c.ClassStartTime.HasValue && c.ClassEndTime.HasValue
+                )
+                .ToListAsync();
+
+            var reservationConflicts = await _context.Reservations
+                .Where(r =>
+                    r.HallCode == hallCode &&
+                    r.RTime == DateOnly.FromDateTime(dateOnly) &&
+                    (excludeReservationCode == null || r.ReservationCode != excludeReservationCode) &&
+                    r.ReservationStartTime.HasValue && r.ReservationEndTime.HasValue
+                )
+                .ToListAsync();
+
+            bool hasConflict = false;
+            System.Collections.Generic.List<string> conflicts = new();
+
+            static bool Overlaps(TimeOnly s1, TimeOnly e1, TimeOnly s2, TimeOnly e2)
+            {
+                var t1Start = s1.ToTimeSpan();
+                var t1End = e1 < s1 ? e1.ToTimeSpan() + TimeSpan.FromDays(1) : e1.ToTimeSpan();
+                var t2Start = s2.ToTimeSpan();
+                var t2End = e2 < s2 ? e2.ToTimeSpan() + TimeSpan.FromDays(1) : e2.ToTimeSpan();
+                return t1Start < t2End && t2Start < t1End;
+            }
+
+            foreach (var c in classConflicts)
+            {
+                if (Overlaps(s, e, c.ClassStartTime.Value, c.ClassEndTime.Value))
+                {
+                    hasConflict = true;
+                    conflicts.Add($"Class: {c.ClassName} ({c.ClassStartTime.Value:HH:mm}-{c.ClassEndTime.Value:HH:mm})");
+                }
+            }
+            foreach (var r in reservationConflicts)
+            {
+                if (Overlaps(s, e, r.ReservationStartTime.Value, r.ReservationEndTime.Value))
+                {
+                    hasConflict = true;
+                    conflicts.Add($"Reservation: {r.Description} ({r.ReservationStartTime.Value:HH:mm}-{r.ReservationEndTime.Value:HH:mm})");
+                }
+            }
+            if (hasConflict)
+                return Json(new { success = false, message = "Time slot not available.", conflicts });
+            return Json(new { success = true });
+        }
+
+        // --- Helper method for double-booking prevention for both classes and reservations ---
+        private async Task<bool> HasHallConflict(int hallCode, DateTime date, TimeOnly start, TimeOnly end)
+        {
+            // Classes
+            var classes = await _context.Classes
+                .Where(c => c.HallCode == hallCode
+                            && c.InsertTime.Date == date
+                            && c.ClassStartTime.HasValue && c.ClassEndTime.HasValue)
+                .ToListAsync();
+
+            // Reservations
+            var dateOnly = DateOnly.FromDateTime(date);
+            var reservations = await _context.Reservations
+                .Where(r => r.HallCode == hallCode
+                            && r.RTime == dateOnly
+                            && r.ReservationStartTime.HasValue && r.ReservationEndTime.HasValue)
+                .ToListAsync();
+
+            bool Overlaps(TimeOnly s1, TimeOnly e1, TimeOnly s2, TimeOnly e2)
+            {
+                var t1Start = s1.ToTimeSpan();
+                var t1End = e1 < s1 ? e1.ToTimeSpan() + TimeSpan.FromDays(1) : e1.ToTimeSpan();
+                var t2Start = s2.ToTimeSpan();
+                var t2End = e2 < s2 ? e2.ToTimeSpan() + TimeSpan.FromDays(1) : e2.ToTimeSpan();
+                return t1Start < t2End && t2Start < t1End;
+            }
+
+            foreach (var c in classes)
+                if (Overlaps(start, end, c.ClassStartTime.Value, c.ClassEndTime.Value))
+                    return true;
+
+            foreach (var r in reservations)
+                if (Overlaps(start, end, r.ReservationStartTime.Value, r.ReservationEndTime.Value))
+                    return true;
+
+            return false;
         }
     }
 }

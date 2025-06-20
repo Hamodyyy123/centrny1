@@ -1,0 +1,66 @@
+﻿@{
+    ViewData["Title"] = "Teacher Schedule Grid";
+}
+<html>
+<body>
+<nav class="navbar navbar-dark bg-dark px-3">
+        <div class="d-flex align-items-center gap-3">
+            <h5 class="text-white m-0">Teacher Management</h5>
+            <a class="btn btn-outline-light btn-sm" href="/Item">Item management</a>
+            <a class="btn btn-outline-warning btn-sm" href="/Security/Security">Security</a>
+            <a class="btn btn-outline-info btn-sm" href="/Class">Classes</a>
+            <a class="btn btn-outline-success btn-sm" href="/Reservation">Reservations</a>
+            <a class="btn btn-outline-primary btn-sm" href="/Exam">Exams</a>
+              <a class="btn btn-outline-primary btn-sm" href="/Root">Root managment</a>
+        </div>
+    </nav>
+<div class="container mt-4">
+    <h2>Teacher Schedule Grid</h2>
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="teacherSelect" class="form-label">Select Teacher</label>
+            <select class="form-select" id="teacherSelect">
+                <option value="">-- Choose a Teacher --</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="dateInput" class="form-label">Select Date</label>
+            <input type="date" id="dateInput" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="col-md-2 align-self-end">
+            <button class="btn btn-primary" id="filterBtn">Show Schedule</button>
+        </div>
+        <div class="col-md-3 align-self-end text-end">
+            <button class="btn btn-success" id="addClassBtn">Add Class</button>
+        </div>
+    </div>
+    <div id="gridWrapper"></div>
+</div>
+
+<!-- Add Class Modal -->
+<div class="modal fade" id="addClassModal" tabindex="-1" aria-labelledby="addClassModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="addClassForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addClassModalLabel">Add Class from Schedule</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="addClassError" class="alert alert-danger d-none"></div>
+          <div id="scheduleTableWrapper"></div>
+          <input type="hidden" id="selectedScheduleCode" name="Schedule_Code" />
+          <input type="hidden" id="selectedHallCode" name="Hall_Code" />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success" id="submitAddClassBtn" disabled>Add Class</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+@section Scripts {
+    <script src="~/js/TeacherClass.js"></script>
+}</body>
+</html>

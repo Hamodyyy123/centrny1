@@ -43,6 +43,8 @@ public partial class Schedule
 
     public virtual User? InsertUserNavigation { get; set; }
 
+    public virtual ICollection<Learn> Learns { get; set; } = new List<Learn>();
+
     public virtual Root? RootCodeNavigation { get; set; }
 
     public virtual Subject? SubjectCodeNavigation { get; set; }

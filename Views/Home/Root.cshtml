@@ -1,5 +1,8 @@
 ﻿@{
     ViewData["Title"] = "Root";
+    var username = ViewData["Username"] as string;
+    var rootcode = ViewData["RootCode"] as string;
+    var iscenter = ViewData["IsCenter"] as string;
     Layout = null;
 }
 
@@ -17,190 +20,290 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- 🟩 NEW NAVBAR START -->
-    <nav class="navbar navbar-dark bg-dark px-3">
-        <div class="d-flex align-items-center gap-3">
-            <h5 class="text-white m-0">Root Management</h5>
-            <a class="btn btn-outline-light btn-sm" href="/Item">Item management</a>
-            <a class="btn btn-outline-warning btn-sm" href="/Security/Security">Security</a>
-            <a class="btn btn-outline-info btn-sm" href="/Class">Classes</a>
-            <a class="btn btn-outline-success btn-sm" href="/Reservation">Reservations</a>
-        </div>
-    </nav>
-
     <!-- Custom Styling -->
     <link rel="stylesheet" href="@Url.Content("~/css/site.css")" />
 </head>
 <body>
-    <div class="container mt-4">
-        <!-- Filter Radios -->
-        <div class="mb-3">
-            <label class="form-label me-2">Filter by Center:</label>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="centerFilter" id="centerAll" value="" checked>
-                <label class="form-check-label" for="centerAll">All</label>
+    <!-- 🟩 NAVBAR -->
+    <nav class="navbar custom-navbar px-3">
+        <div class="d-flex align-items-center gap-3">
+            <h5 class="navbar-title m-0">Root Management</h5>
+            <a class="nav-btn" href="/Item">Item management</a>
+            <a class="nav-btn" href="/Security/Security">Security</a>
+            <a class="nav-btn" href="/Class">Classes</a>
+            <a class="nav-btn" href="/Reservation">Reservations</a>
+            <a class="nav-btn" href="/Exam">Exams</a>
+            <a class="nav-btn" href="/TeacherClass/Teacher">Teacher schedule</a>
+            <a class="nav-btn" href="/Question">Questions management</a>
+            <a class="nav-btn" href="/StudentExam/Index">Student Exam</a>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- SESSION DEBUG INFO -->
+        <div class="alert alert-info mb-4">
+            <strong>Session Debug Info:</strong>
+            <ul class="mb-0">
+                <li>Username in session: <strong>@username</strong></li>
+                <li>RootCode in session: <strong>@rootcode</strong></li>
+                <li>IsCenter in session: <strong>@iscenter</strong></li>
+            </ul>
+        </div>
+        <!-- ROOT MANAGEMENT CARD -->
+        <div class="card root-index-card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-sitemap me-2"></i>
+                    Root Management System
+                </h4>
             </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="centerFilter" id="centerTrue" value="true">
-                <label class="form-check-label" for="centerTrue">Center</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="centerFilter" id="centerFalse" value="false">
-                <label class="form-check-label" for="centerFalse">Teacher</label>
+            <div class="card-body">
+                <!-- Filter Controls -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="filter-section p-3 border rounded">
+                            <label class="form-label fw-bold mb-3">
+                                <i class="fas fa-filter me-2"></i>Filter by Center:
+                            </label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="centerFilter" id="centerAll" value="" checked>
+                                    <label class="form-check-label fw-semibold" for="centerAll">All</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="centerFilter" id="centerTrue" value="true">
+                                    <label class="form-check-label fw-semibold" for="centerTrue">Center</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="centerFilter" id="centerFalse" value="false">
+                                    <label class="form-check-label fw-semibold" for="centerFalse">Teacher</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button id="addRootBtn" class="btn root-index-btn-primary">
+                            <i class="fas fa-plus me-2"></i>Add New Root
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ROOTS TABLE -->
+                <div class="table-responsive">
+                    <table id="rootTable" class="table root-index-table">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Owner</th>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                                <th>Fees</th>
+                                <th>Address</th>
+                                <th>Centers</th>
+                                <th>Users</th>
+                                <th>Type</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dynamic rows will be appended here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Controls -->
+                <nav id="pagination" aria-label="Page navigation" class="mt-4"></nav>
             </div>
         </div>
-        <!-- Add Root Button -->
-        <button id="addRootBtn" class="btn btn-success mb-3">Add Root</button>
-        <!-- Roots Table -->
-        <table id="rootTable" class="table table-bordered table-striped table-hover">
-            <thead>
-                <tr>
-                    <th>Root Code</th>
-                    <th>Root Owner</th>
-                    <th>Root Name</th>
-                    <th>Root Phone</th>
-                    <th>Root Email</th>
-                    <th>Root Fees</th>
-                    <th>Root Address</th>
-                    <th>No. of Centers</th>
-                    <th>No. of Users</th>
-                    <th>Is Center</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Dynamic rows will be appended here -->
-            </tbody>
-        </table>
-        <!-- Pagination Controls -->
-        <nav id="pagination" aria-label="Page navigation"></nav>
     </div>
 
-    <!-- Modal -->
+    <!-- ROOT MODAL -->
     <div class="modal fade" id="rootModal" tabindex="-1" aria-labelledby="rootModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <form id="rootForm">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="rootModalLabel">Add/Edit Root</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="rootModalLabel">
+                            <i class="fas fa-user-cog me-2"></i>Add/Edit Root
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body row g-3">
+                    <div class="modal-body">
                         <!-- Hidden input for row index -->
                         <input type="hidden" id="rowIndex" />
 
-                        <!-- Form fields for root details -->
-                        <!-- Wrap RootCode in a container for easy show/hide -->
-                        <div class="form-group" id="rootCodeContainer" style="display: none;">
-                            <label for="rootCode">Root Code</label>
-                            <p id="rootCodeDisplay" class="form-control-plaintext text-muted"></p>
+                        <!-- Root Code Display (Edit Mode) -->
+                        <div class="form-group mb-3" id="rootCodeContainer" style="display: none;">
+                            <div class="alert alert-info">
+                                <strong>Root Code:</strong> <span id="rootCodeDisplay" class="fw-bold"></span>
+                            </div>
                         </div>
 
-                        <div class="col-md-6">
-                            <label for="rootOwner" class="form-label">Root Owner</label>
-                            <input type="text" class="form-control" id="rootOwner" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="rootName" class="form-label">Root Name</label>
-                            <input type="text" class="form-control" id="rootName" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="rootPhone" class="form-label">Root Phone</label>
-                            <input type="text" class="form-control" id="rootPhone" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="rootEmail" class="form-label">Root Email</label>
-                            <input type="email" class="form-control" id="rootEmail" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="rootFees" class="form-label">Root Fees</label>
-                            <input type="number" class="form-control" id="rootFees" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="rootAddress" class="form-label">Root Address</label>
-                            <input type="text" class="form-control" id="rootAddress" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="numCenters" class="form-label">No. of Centers</label>
-                            <input type="number" class="form-control" id="numCenters" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="numUsers" class="form-label">No. of Users</label>
-                            <input type="number" class="form-control" id="numUsers" required>
-                        </div>
-
-                        <div class="col-md-6 form-check">
-                            <input type="checkbox" class="form-check-input" id="isCenter">
-                            <label class="form-check-label" for="isCenter">Is Center?</label>
-                        </div>
-                        <div id="addOnlyFields" class="row">
+                        <!-- Form Grid -->
+                        <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="insertUser" class="form-label">Insert User</label>
+                                <label for="rootOwner" class="form-label fw-semibold">
+                                    <i class="fas fa-user me-1"></i>Root Owner
+                                </label>
+                                <input type="text" class="form-control" id="rootOwner" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="rootName" class="form-label fw-semibold">
+                                    <i class="fas fa-building me-1"></i>Root Name
+                                </label>
+                                <input type="text" class="form-control" id="rootName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="rootPhone" class="form-label fw-semibold">
+                                    <i class="fas fa-phone me-1"></i>Phone
+                                </label>
+                                <input type="text" class="form-control" id="rootPhone" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="rootEmail" class="form-label fw-semibold">
+                                    <i class="fas fa-envelope me-1"></i>Email
+                                </label>
+                                <input type="email" class="form-control" id="rootEmail" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="rootFees" class="form-label fw-semibold">
+                                    <i class="fas fa-dollar-sign me-1"></i>Fees
+                                </label>
+                                <input type="number" class="form-control" id="rootFees" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="rootAddress" class="form-label fw-semibold">
+                                    <i class="fas fa-map-marker-alt me-1"></i>Address
+                                </label>
+                                <input type="text" class="form-control" id="rootAddress" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="numCenters" class="form-label fw-semibold">
+                                    <i class="fas fa-building me-1"></i>No. of Centers
+                                </label>
+                                <input type="number" class="form-control" id="numCenters" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="numUsers" class="form-label fw-semibold">
+                                    <i class="fas fa-users me-1"></i>No. of Users
+                                </label>
+                                <input type="number" class="form-control" id="numUsers" required>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mt-4">
+                                    <input type="checkbox" class="form-check-input" id="isCenter">
+                                    <label class="form-check-label fw-semibold" for="isCenter">
+                                        <i class="fas fa-toggle-on me-1"></i>Is Center?
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Add-Only Fields -->
+                        <div id="addOnlyFields" class="row g-3 mt-3">
+                            <div class="col-md-6">
+                                <label for="insertUser" class="form-label fw-semibold">
+                                    <i class="fas fa-user-plus me-1"></i>Insert User
+                                </label>
                                 <input type="text" class="form-control" id="insertUser">
                             </div>
-
-                            <div class="col-md-6 form-check mt-4">
-                                <input type="checkbox" class="form-check-input" id="isActive" checked>
-                                <label class="form-check-label" for="isActive">Is Active?</label>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mt-4">
+                                    <input type="checkbox" class="form-check-input" id="isActive" checked>
+                                    <label class="form-check-label fw-semibold" for="isActive">
+                                        <i class="fas fa-check-circle me-1"></i>Is Active?
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Save</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn root-index-btn-edit">
+                            <i class="fas fa-save me-2"></i>Save
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Module Assignment Modal (updated for your CSS requirement) -->
+    <!-- MODULE ASSIGNMENT MODAL -->
     <div class="modal fade" id="moduleAssignmentModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Assign Modules to Root</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-puzzle-piece me-2"></i>Assign Modules to Root
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- Root info: full width and bordered -->
-                    <div class="root-info-container p-3 mb-4" style="border:2px solid #bbb; border-radius:8px;">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label class="form-label mb-0">Root Code:</label>
-                                <span id="displayRootCode" class="fw-bold"></span>
+                    <!-- Root Info Section -->
+                    <div class="root-info-section mb-4">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0 fw-bold">
+                                    <i class="fas fa-info-circle me-2"></i>Root Information
+                                </h6>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label mb-0">Root Name:</label>
-                                <span id="displayRootName" class="fw-bold"></span>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Root Code:</strong>
+                                        <span id="displayRootCode" class="badge bg-primary ms-2"></span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Root Name:</strong>
+                                        <span id="displayRootName" class="text-success fw-bold ms-2"></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <!-- Modules columns below -->
+
+                    <!-- Module Assignment Section -->
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <h5>Assigned Modules</h5>
-                            <div id="assignedModules" class="modules-container assigned-modules"
-                                 style="min-height:250px; border:2px dashed #22bb33; border-radius:6px;">
-                                <!-- Dynamic content -->
+                        <div class="col-md-6">
+                            <div class="modules-section">
+                                <h5 class="text-success mb-3">
+                                    <i class="fas fa-check-circle me-2"></i>Assigned Modules
+                                </h5>
+                                <div id="assignedModules" class="modules-container assigned-modules-container">
+                                    <!-- Dynamic content -->
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <h5>Available Modules</h5>
-                            <div id="availableModules" class="modules-container available-modules"
-                                 style="min-height:250px; border:2px dashed black; border-radius:6px;">
-                                <!-- Dynamic content -->
+                        <div class="col-md-6">
+                            <div class="modules-section">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-list me-2"></i>Available Modules
+                                </h5>
+                                <div id="availableModules" class="modules-container available-modules-container">
+                                    <!-- Dynamic content -->
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" id="saveModuleAssignments">Save Changes</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn root-index-btn-edit" id="saveModuleAssignments">
+                        <i class="fas fa-save me-2"></i>Save Changes
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Close
+                    </button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <!-- Custom JavaScript -->
     <script src="@Url.Content("~/js/root.js")"></script>
 </body>
