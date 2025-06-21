@@ -206,6 +206,61 @@ $(document).ready(function () {
         });
     });
 
+    // ========== SEARCH BAR LOGIC ==========
+    $('#questionSearchBtn').on('click', function () {
+        let term = $('#questionSearchInput').val().trim();
+        if (term.length === 0) return;
+        doQuestionSearch(term);
+    });
+
+    $('#questionSearchInput').on('keypress', function (e) {
+        if (e.which === 13) {
+            $('#questionSearchBtn').click();
+        }
+    });
+
+    $('#questionSearchClearBtn').on('click', function () {
+        $('#questionSearchInput').val('');
+        $('#question-search-results').hide().html('');
+        $('#chapters-container').show();
+        $('#pagination-container').show();
+        $('#questionSearchClearBtn').hide();
+    });
+
+    function doQuestionSearch(term) {
+        $('#question-search-results').html('<div style="padding:18px;">Searching...</div>').show();
+        $('#chapters-container').hide();
+        $('#pagination-container').hide();
+        $('#questionSearchClearBtn').show();
+
+        $.get('/Question/SearchQuestions', { term }, function (data) {
+            let html = '';
+            if (!data || data.length === 0) {
+                html = '<div style="padding:18px; color:#888;">No questions found for "<b>' + $('<div/>').text(term).html() + '</b>".</div>';
+            } else {
+                html = '<div style="padding-bottom:8px;color:#444;">Found ' + data.length + ' question(s):</div><ul style="padding-left:18px;">';
+                data.forEach(function (q) {
+                    html += '<li style="margin-bottom:8px;">';
+                    html += '<span class="question-content">' + $('<div/>').text(q.questionContent).html() + '</span>';
+                    html += ' <span style="color:#aaa;font-size:13px;">[Lesson: ' + (q.lessonName || '-') + ']</span>';
+                    html += '</li>';
+                });
+                html += '</ul>';
+            }
+            html += '<button id="questionSearchBackBtn" class="modern-btn btn-cancel" style="margin-top:14px;">Back</button>';
+            $('#question-search-results').html(html).show();
+        });
+    }
+
+    // Back/clear from search results
+    $(document).on('click', '#questionSearchBackBtn', function () {
+        $('#question-search-results').hide().html('');
+        $('#chapters-container').show();
+        $('#pagination-container').show();
+        $('#questionSearchInput').val('');
+        $('#questionSearchClearBtn').hide();
+    });
+
     // ========== EXISTING QUESTION/ANSWER UI LOGIC BELOW ==========
 
     function loadChapters(page = 1) {

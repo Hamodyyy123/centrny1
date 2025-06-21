@@ -208,8 +208,19 @@
                 </div>
                 <div class="modal-body p-3" style="min-height: 80vh; max-height: 80vh; overflow: hidden;">
                     <input type="hidden" id="questionsExamCode" name="ExamCode">
+
                     <div class="row g-3 h-100">
                         <div class="col-lg-6 d-flex flex-column">
+
+                            <!-- ======= QUESTION SEARCH BAR START ======= -->
+                            <div id="exam-question-search-bar" class="mb-3">
+                                <input type="text" id="examQuestionSearchInput" class="form-control" placeholder="Search for questions...">
+                                <button id="examQuestionSearchBtn" class="btn btn-primary btn-sm mt-1">Search</button>
+                                <button id="examQuestionSearchClearBtn" class="btn btn-secondary btn-sm mt-1" style="display:none;">Clear</button>
+                            </div>
+                            <div id="exam-question-search-results" class="mb-2" style="display:none;"></div>
+                            <!-- ======= QUESTION SEARCH BAR END ======= -->
+
                             <div class="questions-section h-100 d-flex flex-column">
                                 <div id="availablePaginationTop" class="mb-2"></div>
                                 <div class="d-flex justify-content-between align-items-center mb-3">

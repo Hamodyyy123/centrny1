@@ -50,29 +50,6 @@
         });
     }
 
-    function populateSelect($select, data, selectedValue) {
-        $select.empty();
-        $select.append($('<option>').val('').text('-- Select --'));
-        data.forEach(function (item) {
-            $select.append($('<option>').val(item.value).text(item.text));
-        });
-        if (selectedValue !== undefined && selectedValue !== null && selectedValue !== '' && selectedValue !== 0 && selectedValue !== '0') {
-            $select.val(selectedValue);
-        } else {
-            $select.val('');
-        }
-    }
-
-    function displayError(msg) {
-        var $errorDiv = $('#examError');
-        $errorDiv.text(msg).show();
-    }
-
-    function displayEditError(msg) {
-        var $errorDiv = $('#editExamError');
-        $errorDiv.text(msg).show();
-    }
-
     function loadEduYears(selected) {
         $.get('/Exam/GetEduYears?rootCode=' + window.rootCode, function (data) {
             var $eduYear = $('#EduYearCode');
@@ -94,7 +71,6 @@
     // =============================
 
     function loadExamStats(examCode) {
-        // Show loading spinner
         $('#examStatsContent').html('<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>');
         $('#examStatsModal').modal('show');
         $.get('/Exam/GetExamStats?examCode=' + examCode, function (res) {
@@ -120,7 +96,6 @@
         $.get('/Exam/GetAllExams', function (data) {
             var isCenter = isCenterUser();
 
-            // For root users, get teacher name from first exam (since all have the same teacher)
             if (!isCenter && data.length > 0) {
                 var teacherName = data[0].teacherName || '';
                 $('#exam-for-teacher').show().html(
@@ -142,7 +117,7 @@
                     <td>${exam.examCode ?? ''}</td>
                     <td>${exam.examName ?? ''}</td>
                     <td>${exam.examDegree ?? ''}</td>
-          <td>${exam.averageMarks !== undefined ? exam.averageMarks.toFixed(2) : ''}</td>
+                    <td>${exam.averageMarks !== undefined ? exam.averageMarks.toFixed(2) : ''}</td>
                     <td>${exam.examPercentage ?? ''}</td>
                     <td>${exam.examTimer ?? ''}</td>
                     <td>${exam.eduYearName ?? ''}</td>`;
@@ -176,7 +151,6 @@
         });
     }
 
-    // Show stats when clicking the stats button
     $('#exam-details').on('click', '.view-exam-stats', function () {
         var examCode = $(this).data('id');
         loadExamStats(examCode);
@@ -383,29 +357,26 @@
             }
         });
     });
+
     // =============================
     // Edit Exam Logic
     // =============================
 
-    // Reference to the edit form and modal (update selectors if needed)
     var $editForm = $('#editExamForm');
     var editModal = new bootstrap.Modal(document.getElementById('editExamModal'));
     var editingExamId = null;
 
-    // Open edit modal and load exam data
     $('#exam-details').on('click', '.edit-exam', function () {
         editingExamId = $(this).data('id');
         $editForm[0].reset();
         $('#editExamError').hide();
         $.get('/Exam/GetExam?id=' + editingExamId, function (exam) {
-            // Set form fields
             $editForm.find('[name="ExamCode"]').val(exam.examCode);
             $editForm.find('[name="ExamName"]').val(exam.examName);
             $editForm.find('[name="ExamTimer"]').val(exam.examTimer);
             $editForm.find('[name="IsExam"]').prop('checked', exam.isExam);
             $editForm.find('[name="IsOnline"]').prop('checked', exam.isOnline);
 
-            // Set hidden fields for required codes
             $editForm.find('[name="TeacherCode"]').val(exam.teacherCode);
             $editForm.find('[name="SubjectCode"]').val(exam.subjectCode);
             $editForm.find('[name="YearCode"]').val(exam.yearCode);
@@ -417,12 +388,10 @@
         });
     });
 
-    // Handle edit form submit
     $editForm.on('submit', function (e) {
         e.preventDefault();
         $('#editExamError').hide();
 
-        // Build data object, converting codes to numbers
         var data = {
             ExamCode: $editForm.find('[name="ExamCode"]').val(),
             ExamName: $editForm.find('[name="ExamName"]').val(),
@@ -460,7 +429,6 @@
         });
     });
 
-    // Delete exam logic (no change)
     $('#exam-details').on('click', '.delete-exam', function () {
         var id = $(this).data('id');
         if (!confirm('Delete this exam?')) return;
@@ -490,6 +458,7 @@
     // =============================
     // Questions Management System
     // =============================
+
     var chosenQuestions = [];
     var availableQuestions = [];
     var currentExamCode = null;
@@ -772,6 +741,7 @@
         $('#availableInfo').text(`Available Questions: ${availableQuestions.length} (Page ${availableCurrentPage} of ${availableTotalPages})`);
         $('#chosenInfo').text(`Chosen Questions: ${chosenQuestions.length} (Page ${chosenCurrentPage} of ${chosenTotalPages})`);
 
+        // DRAGULA SETUP
         if (drake && drake.destroy) drake.destroy();
         drake = dragula([document.getElementById('chosenQuestions'), document.getElementById('availableQuestions')], {
             accepts: function (el, target, source, sibling) {
@@ -878,8 +848,82 @@
         });
     });
 
-    // =============================
-    // Initialization
-    // =============================
+    // =============== Add: Question Search in Add Questions Modal ===============
+    $('#examQuestionSearchBtn').on('click', function () {
+        var term = $('#examQuestionSearchInput').val().trim();
+        if (!term) return;
+        doExamQuestionSearch(term);
+    });
+
+    $('#examQuestionSearchInput').on('keypress', function (e) {
+        if (e.which === 13) $('#examQuestionSearchBtn').click();
+    });
+
+    $('#examQuestionSearchClearBtn').on('click', function () {
+        $('#examQuestionSearchInput').val('');
+        $('#exam-question-search-results').hide().html('');
+        $('#availableQuestions').show();
+        $('#availablePaginationTop').show();
+        $('#availablePagination').show();
+        $(this).hide();
+    });
+
+    function doExamQuestionSearch(term) {
+        $('#exam-question-search-results').html('<div class="p-2">Searching...</div>').show();
+        $('#availableQuestions').hide();
+        $('#availablePaginationTop').hide();
+        $('#availablePagination').hide();
+        $('#examQuestionSearchClearBtn').show();
+
+        $.get('/Exam/SearchQuestions', { term }, function (data) {
+            let html = '';
+            if (!data || data.length === 0) {
+                html = '<div class="p-2 text-muted">No questions found for "<b>' + $('<div/>').text(term).html() + '</b>".</div>';
+            } else {
+                html = '<ul class="list-group">';
+                data.forEach(function (q) {
+                    html += '<li class="list-group-item d-flex justify-content-between align-items-center">';
+                    html += '<span><b>' + $('<div/>').text(q.questionContent).html() + '</b><br><small class="text-secondary">Lesson: ' + (q.lessonName || '-') + '</small></span>';
+                    html +=
+                        '<button type="button" class="btn btn-success btn-sm add-question-from-search" data-id="' + q.questionCode + '" data-content="' + $('<div/>').text(q.questionContent).html() + '" data-lessonname="' + $('<div/>').text(q.lessonName).html() + '">Add</button>';
+                    html += '</li>';
+                });
+                html += '</ul>';
+            }
+            html += '<button id="examQuestionSearchBackBtn" type="button" class="btn btn-secondary btn-sm mt-2">Back</button>';
+            $('#exam-question-search-results').html(html).show();
+        });
+    }
+
+    $(document).on('click', '#examQuestionSearchBackBtn', function () {
+        $('#exam-question-search-results').hide().html('');
+        $('#availableQuestions').show();
+        $('#availablePaginationTop').show();
+        $('#availablePagination').show();
+        $('#examQuestionSearchInput').val('');
+        $('#examQuestionSearchClearBtn').hide();
+    });
+
+    $(document).on('click', '.add-question-from-search', function (e) {
+        e.preventDefault();
+        var questionCode = parseInt($(this).data('id'));
+        if (chosenQuestions.some(q => q.questionCode === questionCode)) return;
+        // Add with degree 1, allow user to edit in chosen list
+        chosenQuestions.push({
+            questionCode: questionCode,
+            questionContent: $(this).data('content'),
+            questionDegree: 1,
+            lessonName: $(this).data('lessonname'),
+        });
+        availableQuestions = availableQuestions.filter(q => q.questionCode !== questionCode);
+        rebuildGroupedData();
+        renderQuestionsLists();
+        // The modal stays open, and the user can edit the degree input!
+    });
+
+    // =============== END Question Search in Add Questions Modal ===============
+
+    // ... other code for exam page (add/edit/delete exam) ...
+
     loadExams();
 });

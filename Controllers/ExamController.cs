@@ -546,6 +546,28 @@ public class ExamController : Controller
         db.SaveChanges();
     }
 
+    // ========= SEARCH QUESTIONS FOR ADD QUESTIONS MODAL =========
+    [HttpGet]
+    public IActionResult SearchQuestions(string term)
+    {
+        int rootCode = GetSessionRootCode();
+        if (string.IsNullOrWhiteSpace(term)) return Json(new List<object>());
+
+        var query = from q in db.Questions
+                    join lesson in db.Lessons on q.LessonCode equals lesson.LessonCode
+                    where lesson.RootCode == rootCode
+                       && q.QuestionContent.Contains(term)
+                    select new
+                    {
+                        questionCode = q.QuestionCode,
+                        questionContent = q.QuestionContent,
+                        lessonName = lesson.LessonName,
+                        lessonCode = lesson.LessonCode
+                    };
+
+        return Json(query.Take(50).ToList());
+    }
+
     public IActionResult Index()
     {
         ViewData["IsCenter"] = IsSessionCenter() ? "true" : "false";

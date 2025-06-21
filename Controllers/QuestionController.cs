@@ -407,6 +407,27 @@ namespace centrny1.Controllers
                 return Json(new { success = false, message = ex.Message });
             }
         }
+        [HttpGet]
+        public JsonResult SearchQuestions(string term)
+        {
+            int rootCode = GetUserRootCode();
+            if (rootCode == 0 || string.IsNullOrWhiteSpace(term))
+                return Json(new List<object>());
+
+            var questions = (from q in _context.Questions
+                             join l in _context.Lessons on q.LessonCode equals l.LessonCode
+                             where q.QuestionContent.Contains(term) && l.RootCode == rootCode
+                             select new
+                             {
+                                 questionCode = q.QuestionCode,
+                                 questionContent = q.QuestionContent,
+                                 lessonCode = q.LessonCode,
+                                 lessonName = l.LessonName,
+                                 examCode = q.ExamCode
+                             }).ToList();
+
+            return Json(questions);
+        }
 
         // ---- For Info Box (User, Root, Teacher) ----
         [HttpGet]
